@@ -1,0 +1,5 @@
+dist/
+*.obj
+*.pdb
+*.exe
+.vs/

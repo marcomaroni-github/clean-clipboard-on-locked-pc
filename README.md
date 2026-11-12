@@ -1,52 +1,52 @@
 # CleanClipboardOnLock
 
-Utility ultra-leggera per Windows scritta in **C puro (API Win32 native, senza C Runtime / CRT)** che svuota automaticamente sia gli **Appunti correnti (`Ctrl+V`)** sia la **Cronologia Appunti di Windows 10/11 (`Win+V`)** non appena la sessione viene bloccata (`Win+L`, timeout schermo, blocco sessione).
+An ultra-lightweight Windows utility written in **pure C (native Win32 API, no C Runtime / CRT)** that automatically clears both the **current clipboard (`Ctrl+V`)** and the **Windows 10/11 Clipboard History (`Win+V`)** as soon as the session is locked (`Win+L`, display timeout, session lock).
 
-## Caratteristiche principali
+## Key Features
 
-- **Consumo RAM minimo (~0.3 – 0.5 MB):** compilata senza CRT (`/NODEFAULTLIB`), senza framework (.NET/Electron) e senza finestre grafiche (`HWND_MESSAGE`). La libreria WinRT (`combase.dll`) per pulire la cronologia `Win+V` viene caricata dinamicamente solo nell'istante del blocco e subito scaricata, seguito da `SetProcessWorkingSetSize` per rilasciare immediatamente le pagine al sistema operativo.
-- **0.00% CPU in background:** nessun timer o polling; il processo dorme nel kernel (`GetMessageW`) finché Windows non invia la notifica `WM_WTSSESSION_CHANGE` (`WTS_SESSION_LOCK`).
-- **Completamente invisibile:** nessuna finestra, nessuna icona nella barra delle applicazioni o System Tray.
-- **Doppia modalità nello stesso eseguibile (~6 KB):**
-  1. **Demone invisibile (consigliato, nessun privilegio Admin richiesto):** resta in ascolto passivo e avvia automaticamente al login utente (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
-  2. **One-shot (`--once`, 0 byte RAM in idle):** pulisce tutto in pochi millisecondi ed esce subito, ideale se si preferisce agganciarlo all'*Utilità di pianificazione* (Task Scheduler) di Windows sull'evento *Al blocco della sessione*.
+- **Minimal RAM usage (~0.3 – 0.5 MB):** compiled without CRT (`/NODEFAULTLIB`), without frameworks (.NET/Electron), and without graphical windows (`HWND_MESSAGE`). The WinRT library (`combase.dll`) required to clear `Win+V` history is dynamically loaded only at the moment of lock and immediately unloaded, followed by `SetProcessWorkingSetSize` to release pages back to the OS immediately.
+- **0.00% CPU in the background:** no timers or polling; the process sleeps in the kernel (`GetMessageW`) until Windows dispatches the `WM_WTSSESSION_CHANGE` (`WTS_SESSION_LOCK`) notification.
+- **Completely invisible:** no window, no taskbar entry, and no System Tray icon.
+- **Dual mode in the same executable (~6 KB):**
+  1. **Invisible daemon (recommended, no Admin privileges required):** stays in passive listening mode and starts automatically at user login (`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`).
+  2. **One-shot (`--once`, 0 bytes idle RAM):** clears everything in a few milliseconds and exits immediately, ideal for pairing with Windows *Task Scheduler* on the *On workstation lock* event.
 
-## Compilazione
+## Building
 
-Richiede Visual Studio con il workload *Sviluppo di applicazioni desktop con C++* (o *MSVC Build Tools*):
+Requires Visual Studio with the *Desktop development with C++* workload (or *MSVC Build Tools*):
 
 ```powershell
 .\build.ps1
 ```
 
-L'eseguibile viene generato in `dist\CleanClipboardOnLock.exe`.
+The executable will be generated at `dist\CleanClipboardOnLock.exe`.
 
-## Utilizzo
+## Usage
 
-### Modalità 1 (Consigliata): Demone invisibile con avvio automatico
+### Mode 1 (Recommended): Invisible daemon with autostart
 
 ```powershell
-# Registra l'avvio automatico per l'utente corrente e avvia subito il processo in background
+# Register autostart for the current user and start the background process immediately
 .\dist\CleanClipboardOnLock.exe --install
 
-# Per rimuovere l'avvio automatico e terminare il processo in background
+# Remove autostart and terminate the background process
 .\dist\CleanClipboardOnLock.exe --uninstall
 ```
 
-Altri comandi utili:
+Other available options:
 
-| Parametro | Descrizione |
+| Parameter | Description |
 |---|---|
-| *(nessuno)* | Avvia il demone invisibile in background (singola istanza garantita da Mutex) |
-| `--install` | Configura l'avvio automatico in `HKCU\...\Run` e avvia subito il demone |
-| `--uninstall` | Termina l'istanza attiva e rimuove la chiave di avvio automatico |
-| `--stop` | Termina silenziosamente l'istanza attiva in background |
-| `--once` | Svuota immediatamente Clipboard + Cronologia (`Win+V`) e termina il processo |
-| `--help` | Mostra la finestra riepilogativa dei comandi |
+| *(none)* | Starts the invisible daemon in the background (single instance enforced via Mutex) |
+| `--install` | Configures autostart in `HKCU\...\Run` and starts the daemon immediately |
+| `--uninstall` | Terminates the active instance and removes the autostart registry key |
+| `--stop` | Silently terminates the background instance |
+| `--once` | Immediately clears Clipboard + History (`Win+V`) and exits |
+| `--help` | Displays a summary dialog with available commands |
 
-### Modalità 2 (Alternativa): Zero processi in background tramite Utilità di Pianificazione
+### Mode 2 (Alternative): Zero background processes via Task Scheduler
 
-Se preferisci **0 processi attivi** in background (richiede PowerShell come **Amministratore** per registrare il trigger di sessione di Windows):
+If you prefer **0 active processes** in the background (requires PowerShell run as **Administrator** to register the Windows session state change trigger):
 
 ```powershell
 $exe = (Resolve-Path .\dist\CleanClipboardOnLock.exe).Path
